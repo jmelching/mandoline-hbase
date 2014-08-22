@@ -119,7 +119,7 @@
 ;  (with-and-without-caches
 ;    (overwrite-dataset setup teardown)))
 ;
-;(deftest ^:integration sqlite-overwrite-extend-dataset
+;(deftest ^:integration hbase-overwrite-extend-dataset
 ;  (with-and-without-caches
 ;    (overwrite-extend-dataset setup teardown)))
 ;
@@ -127,9 +127,9 @@
   (with-and-without-caches
     (linear-versions setup teardown)))
 ;
-;(deftest ^:integration sqlite-write-scalar
-;  (with-and-without-caches
-;    (write-scalar setup teardown)))
+(deftest ^:integration hbase-write-scalar
+  (with-and-without-caches
+    (write-scalar setup teardown)))
 ;
 ;(deftest ^:integration sqlite-lots-of-processes-ordered
 ;  (lots-of-processes setup teardown false))

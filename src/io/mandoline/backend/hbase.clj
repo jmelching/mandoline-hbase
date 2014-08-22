@@ -264,7 +264,7 @@
   (versions [_ {:keys [limit metadata?]}]
     (log/debugf "HBaseConnection versions method called: metadata: %s, limit: %d " metadata? limit)
     (hbase/with-table [hbase-table (hbase/table (get-table-name table "versions"))]
-      (hbase/with-scanner [scan-results (hbase/scan hbase-table :columns [:D [:t]])]
+      (hbase/with-scanner [scan-results (hbase/scan hbase-table :columns [:D (if metadata? [:t :v] [:t])])]
         (let [limit-fn (if limit #(take limit %) #(identity %))
               result (doall (map result-mapper
                                  (-> scan-results .iterator iterator-seq)))
