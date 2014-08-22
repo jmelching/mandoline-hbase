@@ -13,7 +13,6 @@
     [io.mandoline.utils :as utils]
     [io.mandoline.impl.protocol :as proto]))
 
-
 ;;;;;;;;;;;;;;;; HBase schema ;;;;;;;;;;;;;;;;
 ;;
 ;; Chunk:   {:k <chunk-id (string)>
@@ -22,9 +21,8 @@
 ;; Index:   {:k <var-name(string)|coordinate(strings joined by /)|version-id(number)>
 ;;           :v <chunk id (string)>}
 ;; Version: { key =  <version-id (number)>
+;;            :t <version-id (number)> ;This really can be removed because it is the same as the key
 ;;            :v <json (string)>}
-;;
-;;variable index, that will make index smaller
 ;;
 ;;;;;;;;;;;;;;;;;; Table names ;;;;;;;;;;;;;;;;;;
 ;;
@@ -34,6 +32,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Result mappers
 (defn- keywordize [x] (keyword (Bytes/toString x)))
 
 (defn- result-mapper
@@ -47,6 +46,7 @@
   (hbase/latest-as-map result :map-family keywordize
                        :map-qualifier keywordize))
 
+;; Schema related functions
 
 (defn- get-table-name
   "Construct a table name from one or more table name components.
@@ -73,16 +73,7 @@
                                             :map-value #(Bytes/toString %))]
         (get-in result-map [:D :v])))))
 
-(defn- coordinate->id [coord]
-  (if (empty? coord)
-    "_"
-    (->> coord (interpose "/") (apply str))))
-
-(defn- coordinate->key [metadata var-name coord]
-  (str (name var-name) "|" (coordinate->id coord) "|" (:version-id metadata)))
-
 (defn- delete-table
-  "Make a DeleteTable request"
   [client-opts table]
   (try
     (admin/disable-table table)
@@ -90,6 +81,12 @@
     :success
     (catch TableNotFoundException _
       :success)))
+
+(defn- create-table
+  [client-opts table hash-keydef & opts]
+  (admin/create-table (admin/table-descriptor table :family (admin/column-descriptor :D))))
+
+;; Chunk functions
 
 (defn- read-a-chunk [client-opts table hash]
   (when (or (empty? hash) (not (string? hash)))
@@ -105,8 +102,7 @@
       (IllegalArgumentException. "hash must be a non-empty string")))
   (log/debugf "Reading chunk-ref %s" hash)
   (if-let [result (hbase/with-table [hbase-table (hbase/table (get-table-name table "chunks"))]
-                    (hbase/get hbase-table hash :column
-                               [:D :r]))]
+                    (hbase/get hbase-table hash :column [:D :r]))]
     (do
       (let [result-map (hbase/latest-as-map result
                                             :map-family keywordize
@@ -116,12 +112,6 @@
     (throw
       (IllegalArgumentException.
         (format "No reference count was found for hash %s" hash)))))
-
-(defn- create-table
-  "Make a CreateTable request"
-  [client-opts table hash-keydef & opts]
-  (admin/create-table (admin/table-descriptor table :family (admin/column-descriptor :D))))
-
 
 (deftype HBaseChunkStore [table client-opts]
   proto/ChunkStore
@@ -176,6 +166,15 @@
     nil))
 ;))
 
+;; Index functions
+(defn- coordinate->id [coord]
+  (if (empty? coord)
+    "_"
+    (->> coord (interpose "/") (apply str))))
+
+(defn- coordinate->key [metadata var-name coord]
+  (str (name var-name) "|" (coordinate->id coord) "|" (:version-id metadata)))
+
 
 (deftype HBaseIndex [table client-opts var-name metadata version-cache]
   ;; table is a dataset-level table name
@@ -189,7 +188,10 @@
     (log/debugf "HBaseIndex chunk-at  method called: coordinate: %s" coordinate)
     (let [key (coordinate->key metadata var-name coordinate)
           results (hbase/with-table [hbase-table (hbase/table (get-table-name table "indices"))]
-                    (hbase/with-scanner [scan-results (hbase/scan hbase-table :columns [:D [:v]] :start-row key :stop-row (str key "a"))]
+                    (hbase/with-scanner [scan-results (hbase/scan hbase-table
+                                                                  :columns [:D [:v]]
+                                                                  :start-row key
+                                                                  :stop-row (str key "a"))]
                       (doall (map chunk-mapper (-> scan-results .iterator iterator-seq)))))]
       (Bytes/toString (get-in (first results) [:D :v]))))
 
@@ -220,7 +222,8 @@
             (hbase/check-and-put hbase-table key
                                  :D :v (if (nil? old-hash)
                                          nil
-                                         old-hash) put))
+                                         old-hash)
+                                 put))
           true
           (catch Exception _
             false)))))
@@ -242,10 +245,8 @@
     (log/debugf "HBaseConnection write-version method called with metadata: %s" (:version-id metadata))
     (hbase/with-table [hbase-table (hbase/table (get-table-name table "versions"))]
       (hbase/put hbase-table (str (:version-id metadata))
-                 :values [:D [
-                               ;:k "v"
-                               :t (str (:version-id metadata)) ;TODO remove this once i figure out key only
-                               :v (utils/generate-metadata metadata)]])))
+                 :values [:D [:t (str (:version-id metadata)) ;TODO remove this once i figure out key only
+                              :v (utils/generate-metadata metadata)]])))
 
   (chunk-store [_ options]
     (->HBaseChunkStore table client-opts))
@@ -274,8 +275,7 @@
                               :version   (str (get-in r [:D :t]))}
                              (when metadata? {:metadata (utils/parse-metadata (get-in r [:D :v]) true)})
                              )))]
-          (->> versions (reverse) (limit-fn)))))))
-
+          (->> versions reverse limit-fn))))))
 
 (deftype HBaseSchema [root-table client-opts]
   proto/Schema
@@ -324,7 +324,7 @@
               e))))
       conn)))
 
-(defn root-table-prefix
+(defn- root-table-prefix
   "Given a HBaseSchema root, construct a root prefix for naming the
   associated HBase tables.
 
