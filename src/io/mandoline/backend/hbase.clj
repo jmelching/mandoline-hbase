@@ -3,6 +3,9 @@
     [java.nio ByteBuffer]
     [org.joda.time DateTime]
     [org.apache.hadoop.hbase.util Bytes]
+    [org.apache.hadoop.hbase.filter RowFilter]
+    [org.apache.hadoop.hbase.filter CompareFilter$CompareOp]
+    [org.apache.hadoop.hbase.filter BinaryComparator]
     [org.apache.hadoop.hbase TableNotFoundException])
   (:require
     [clojure.core.memoize :as memo]
@@ -43,8 +46,11 @@
 
 (defn- chunk-mapper
   [result]
-  (hbase/latest-as-map result :map-family keywordize
-                       :map-qualifier keywordize))
+  (merge {:version-id (last (clojure.string/split (Bytes/toString (.getRow result)) #"\|"))}
+         (hbase/latest-as-map result
+                              :map-family keywordize
+                              :map-value #(Bytes/toString %)
+                              :map-qualifier keywordize)))
 
 ;; Schema related functions
 
@@ -175,6 +181,21 @@
 (defn- coordinate->key [metadata var-name coord]
   (str (name var-name) "|" (coordinate->id coord) "|" (:version-id metadata)))
 
+(defn- find-index
+  [var-name coordinate version-cache client-opts table version-id next-version]
+  (let [rowkey (str (name var-name) "|" (coordinate->id coordinate) "|")]
+    (if-let [results (-> (hbase/with-table [hbase-table (hbase/table (get-table-name table "indices"))]
+                           (hbase/with-scanner [scan-results (hbase/scan hbase-table
+                                                                         :columns [:D [:v]]
+                                                                         :filter (RowFilter. (CompareFilter$CompareOp/LESS_OR_EQUAL) (BinaryComparator. (Bytes/toBytes (str rowkey next-version))))
+                                                                         :start-row rowkey
+                                                                         :stop-row (str rowkey "a"))]
+                             (doall (map chunk-mapper (-> scan-results .iterator iterator-seq))))))]
+      (let [transformed-results (reduce merge (map (fn [x] {(read-string (:version-id x)) (get-in x [:D :v])}) results))
+            result (get transformed-results version-id)]
+        (if result
+          result
+          (get transformed-results (-> (keys transformed-results) sort reverse first)))))))
 
 (deftype HBaseIndex [table client-opts var-name metadata version-cache]
   ;; table is a dataset-level table name
@@ -184,18 +205,15 @@
     (log/debugf "HBaseIndex target method called: metadata %s, var-name %s " metadata var-name)
     {:metadata metadata :var-name var-name})
 
+
   (chunk-at [_ coordinate]
-    (log/debugf "HBaseIndex chunk-at  method called: coordinate: %s" coordinate)
-    (let [key (coordinate->key metadata var-name coordinate)
-          results (hbase/with-table [hbase-table (hbase/table (get-table-name table "indices"))]
-                    (hbase/with-scanner [scan-results (hbase/scan hbase-table
-                                                                  :columns [:D [:v]]
-                                                                  :start-row key
-                                                                  :stop-row (str key "a"))]
-                      (doall (map chunk-mapper (-> scan-results .iterator iterator-seq)))))]
-      (Bytes/toString (get-in (first results) [:D :v]))))
+    (find-index
+      var-name coordinate
+      version-cache client-opts table
+      (:version-id metadata)
+      (:version-id metadata)))
 
-
+  ; TODO use find-index
   (chunk-at [_ coordinate version-id]
     (log/debugf "HBaseIndex chunk-at version-id method called: coordinate: %s ,version-id: %s"
                 coordinate version-id)

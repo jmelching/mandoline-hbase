@@ -107,21 +107,21 @@
 ;  (with-and-without-caches
 ;    (entire-flow setup teardown)))
 ;
-;(deftest ^:integration sqlite-grow-dataset
-;  (with-and-without-caches
-;    (grow-dataset setup teardown)))
+(deftest ^:integration hbase-grow-dataset
+  (with-and-without-caches
+    (grow-dataset setup teardown)))
 ;
-;(deftest ^:integration hbase-shrink-dataset
-;  (with-and-without-caches
-;    (shrink-dataset setup teardown)))
+(deftest ^:integration hbase-shrink-dataset
+  (with-and-without-caches
+    (shrink-dataset setup teardown)))
 ;
-;(deftest ^:integration hbase-overwrite-dataset
-;  (with-and-without-caches
-;    (overwrite-dataset setup teardown)))
+(deftest ^:integration hbase-overwrite-dataset
+  (with-and-without-caches
+    (overwrite-dataset setup teardown)))
 ;
-;(deftest ^:integration hbase-overwrite-extend-dataset
-;  (with-and-without-caches
-;    (overwrite-extend-dataset setup teardown)))
+(deftest ^:integration hbase-overwrite-extend-dataset
+  (with-and-without-caches
+    (overwrite-extend-dataset setup teardown)))
 ;
 (deftest ^:integration hbase-linear-versions
   (with-and-without-caches
@@ -131,29 +131,29 @@
   (with-and-without-caches
     (write-scalar setup teardown)))
 ;
-;(deftest ^:integration sqlite-lots-of-processes-ordered
+;(deftest ^:integration hbase-lots-of-processes-ordered
 ;  (lots-of-processes setup teardown false))
 ;
-;(deftest ^:integration sqlite-lots-of-processes-misordered
+;(deftest ^:integration hbase-lots-of-processes-misordered
 ;  (lots-of-processes setup teardown true))
 ;
-;(deftest ^:integration sqlite-lots-of-tiny-slices
+;(deftest ^:integration hbase-lots-of-tiny-slices
 ;  (with-and-without-caches
 ;    (lots-of-tiny-slices setup teardown)))
 ;
-;(deftest ^:integration sqlite-write-fail-write
+;(deftest ^:integration hbase-failed-write
 ;  (with-and-without-caches
 ;    (failed-write setup teardown)))
 ;
-;(deftest ^:integration sqlite-lots-of-overlaps
+;(deftest ^:integration hbase-lots-of-overlaps
 ;  (with-and-without-caches
 ;    (lots-of-overlaps setup teardown)))
 ;
-;(deftest ^:integration sqlite-nan-fill-values
-;  (with-and-without-caches
-;    (fill-double setup teardown)
-;    (fill-float setup teardown)
-;    (fill-short setup teardown)))
+(deftest ^:integration hbase-nan-fill-values
+  (with-and-without-caches
+    (fill-double setup teardown)
+    (fill-float setup teardown)
+    (fill-short setup teardown)))
 ;
 ;(deftest ^:experimental sqlite-chunk-store-write-benchmark
 ;  ; WARNING: Running this test sometimes triggeres SIGSEGV
