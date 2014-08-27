@@ -224,7 +224,8 @@
       (do
         (let [result-map (hbase/latest-as-map result
                                               :map-family keywordize
-                                              :map-qualifier keywordize)]
+                                              :map-qualifier keywordize
+                                              :map-value #(Bytes/toString %))]
           (get-in result-map [:D :v])))))
 
   (write-index [_ coordinate old-hash new-hash]

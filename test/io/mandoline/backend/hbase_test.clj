@@ -63,7 +63,7 @@
             (format "Failed to destroy the dataset: %s %s" test-dataset-name e)))))))
 
 
-(deftest test-hbase-schema-properties
+(deftest ^:integration test-hbase-schema-properties
           (let [store-specs (atom {}) ; map of Schema instance -> store-spec
                 setup-schema (fn []
                                (let [store-spec (setup)
@@ -80,7 +80,7 @@
             ;  setup-schema teardown-schema num-datasets)
             ))
 
-(deftest test-hbase-chunk-store-properties
+(deftest ^:integration test-hbase-chunk-store-properties
           (let [store-specs (atom {}) ; map of ChunkStore instance -> store-spec
                 setup-chunk-store (fn []
                                     (let [store-spec (setup)
@@ -145,9 +145,9 @@
 ;  (with-and-without-caches
 ;    (failed-write setup teardown)))
 ;
-;(deftest ^:integration hbase-lots-of-overlaps
-;  (with-and-without-caches
-;    (lots-of-overlaps setup teardown)))
+(deftest ^:integration hbase-lots-of-overlaps
+  (with-and-without-caches
+    (lots-of-overlaps setup teardown)))
 ;
 (deftest ^:integration hbase-nan-fill-values
   (with-and-without-caches
