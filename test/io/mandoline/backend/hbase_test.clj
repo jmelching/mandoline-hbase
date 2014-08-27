@@ -103,9 +103,9 @@
 
 ; TODO add list tables test
 
-;(deftest ^:integration hbase-entire-flow
-;  (with-and-without-caches
-;    (entire-flow setup teardown)))
+(deftest ^:integration hbase-entire-flow
+  (with-and-without-cacheswo
+    (entire-flow setup teardown)))
 ;
 (deftest ^:integration hbase-grow-dataset
   (with-and-without-caches
@@ -137,9 +137,9 @@
 ;(deftest ^:integration hbase-lots-of-processes-misordered
 ;  (lots-of-processes setup teardown true))
 ;
-;(deftest ^:integration hbase-lots-of-tiny-slices
-;  (with-and-without-caches
-;    (lots-of-tiny-slices setup teardown)))
+(deftest ^:integration hbase-lots-of-tiny-slices
+  (with-and-without-caches
+    (lots-of-tiny-slices setup teardown)))
 ;
 ;(deftest ^:integration hbase-failed-write
 ;  (with-and-without-caches
