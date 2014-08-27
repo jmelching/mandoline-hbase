@@ -104,7 +104,7 @@
 ; TODO add list tables test
 
 (deftest ^:integration hbase-entire-flow
-  (with-and-without-cacheswo
+  (with-and-without-caches
     (entire-flow setup teardown)))
 ;
 (deftest ^:integration hbase-grow-dataset
